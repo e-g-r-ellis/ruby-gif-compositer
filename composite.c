@@ -15,13 +15,6 @@ void copyGifToWriteHandle(GifFileType* image, GifFileType* output) {
         fprintf(stderr, "Copied %d images.\n", image->ImageCount);
         GifMakeSavedImage(output, &image->SavedImages[i]);
     }
-    
-    /*
-    GifByteType* RasterBits = image->SavedImages->RasterBits;
-    for (int i = 0; i < image->SWidth; i++) {
-        *(RasterBits++) = 0;
-    }
-    */
 }
 
 void printStats(GifFileType *fileType) {
@@ -46,7 +39,7 @@ GifFileType *readFileOrExit(char* fname, int *fileHandle, int *errorCode) {
     }
     
     fprintf(stderr,"Openning read handle %s\n", fname);
-    if ((result = DGifOpenFileHandle(*fileHandle, &errorCode)) == NULL) {
+    if ((result = DGifOpenFileHandle(*fileHandle, errorCode)) == NULL) {
         fprintf(stderr, "Could not read gif in file %s.\n", fname);
         exit(-3);
     }
@@ -60,19 +53,19 @@ GifFileType *readFileOrExit(char* fname, int *fileHandle, int *errorCode) {
     return result;
 }
 
-GifByteType *skipToStart(int x, int y, GifFileType *file) {
+GifByteType *skipToStart(int x, int y, GifFileType *file, int frame) {
     int toSkip = file->SWidth * y + x;
-    return (GifByteType *)file->SavedImages->RasterBits + toSkip;
+    return (GifByteType *)(file->SavedImages+frame)->RasterBits + toSkip;
 }
 
-void composite(GifFileType *image, int x, int y, GifFileType *background) {
+void composite(GifFileType *image, int x, int y, GifFileType *background, int frame) {
     if (x < 0 || y < 0 || x + image->SWidth > background->SWidth || image->SHeight > background->SHeight) {
         fprintf(stderr, "Composite image is out of range!\n\tImage width: %d height: %d\n\tx: %d y: %d\n\tBackground width: %d height: %d", image->SWidth, image->SHeight, x, y, background->SWidth, background->SHeight);
     }
     
     GifByteType *imageByte, *backgroundByte;
     imageByte = image->SavedImages->RasterBits;
-    backgroundByte = skipToStart(x, y, background);
+    backgroundByte = skipToStart(x, y, background, frame);
     for (int i = 0; i < image->SHeight; i++) {
         // Copy row
         for (int j = 0; j < image->SWidth; j++) {
@@ -86,18 +79,19 @@ void composite(GifFileType *image, int x, int y, GifFileType *background) {
 
 int main(int argc, char* argv[]) {
     // Open read files
-    char* backgroundFilename = argv[1], *imageFilename = argv[2], *secondImageFilename = argv[3], *resultFilename = argv[4];
+    char* backgroundFilename = argv[1], *imageFilename = argv[2], *secondFilename = argv[3], *resultFilename = argv[4];
     fprintf(stderr,"Background file: %s\nImage file: %s\nResult file: %s\n", argv[1], argv[2], argv[3]);
     
-    int fbackground, fimage, fresult; // File handle, not file descriptor
+    int fbackground, fimage, fsecond, fresult; // File handle, not file descriptor
     //fresult = openFileHandleOrExit(resultFilename, O_WRONLY, -3);
     fresult = 1;
     
     // Read gif files to memory
     int errorCode = 0;
-    GifFileType *gbackground, *gimage;
+    GifFileType *gbackground, *gimage, *gsecond;
     gbackground = readFileOrExit(backgroundFilename, &fbackground, &errorCode);
     gimage = readFileOrExit(imageFilename, &fimage, &errorCode);
+    gsecond = readFileOrExit(secondFilename, &fsecond, &errorCode);
     
     // Open gif handle for writing
     fprintf(stderr, "Preparing write file handle %s\n", resultFilename);
@@ -108,12 +102,16 @@ int main(int argc, char* argv[]) {
     }
     fprintf(stderr, "Copying background to write handle.\n");
     copyGifToWriteHandle(gbackground, gifWriteHandle);
+    GifMakeSavedImage(gifWriteHandle, gbackground->SavedImages);
     printStats(gifWriteHandle);
     
     // DO STUFF HERE
     int x = 41;
     int y = 205;
-    composite(gimage, x, y, gifWriteHandle);
+    fprintf(stderr, "Compositing first image.\n");
+    composite(gimage, x, y, gifWriteHandle, 0);
+    fprintf(stderr, "Compositing second image.\n");
+    composite(gsecond, x, y, gifWriteHandle, 1);
     
     // Write output gif to file
     fprintf(stderr, "Writing output contents to disk.\n");
