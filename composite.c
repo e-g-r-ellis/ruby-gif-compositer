@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-#include "./giflib-5.1.1/lib/gif_lib.h"
+#include "/Users/edward/.rvm/gems/ruby-2.1.4/gems/giflib-0.1/ext/giflib/giflib-5.1.1/lib/gif_lib.h"
 
 void copyGifToWriteHandle(GifFileType* image, GifFileType* output) {
     output->SWidth = image->SWidth;
@@ -86,7 +86,7 @@ void composite(GifFileType *image, int x, int y, GifFileType *background) {
 
 int main(int argc, char* argv[]) {
     // Open read files
-    char* backgroundFilename = argv[1], *imageFilename = argv[2], *resultFilename = argv[3];
+    char* backgroundFilename = argv[1], *imageFilename = argv[2], *secondImageFilename = argv[3], *resultFilename = argv[4];
     fprintf(stderr,"Background file: %s\nImage file: %s\nResult file: %s\n", argv[1], argv[2], argv[3]);
     
     int fbackground, fimage, fresult; // File handle, not file descriptor
@@ -126,13 +126,8 @@ int main(int argc, char* argv[]) {
     if (DGifCloseFile(gbackground, &errorCode) == GIF_ERROR) {
         fprintf(stderr, "Error occurred while closing background file.\n\t%s\n", GifErrorString(errorCode));
     }
-    /*
     if (DGifCloseFile(gimage, &errorCode) == GIF_ERROR) {
         fprintf(stderr, "Error occurred while closing image file.\n\t%s\n", GifErrorString(errorCode));
-    }
-    */
-    if (EGifCloseFile(gifWriteHandle, &errorCode) == GIF_ERROR) {
-        fprintf(stderr, "Error occurred while closing output file.\n\t%s\n", GifErrorString(errorCode));
     }
     
     return 0;
